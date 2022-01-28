@@ -178,34 +178,15 @@ const registerHooks = () => {
         'url',
         '/__coverage__'
       )
-      cy.request({
-        url,
-        log: false,
-        failOnStatusCode: false
+      cy.exec(`curl ${url}`, { failOnNonZeroExit: false }).then(r => {
+        if (!r || !r.stdout) {
+          // we did not get code coverage - this is the
+          // original failed request
+          return
+        }
+        const coverage = JSON.parse(r.stdout).coverage
+        sendCoverage(coverage, 'backend')
       })
-        .then((r) => {
-          return Cypress._.get(r, 'body.coverage', null)
-        })
-        .then((coverage) => {
-          if (!coverage) {
-            // we did not get code coverage - this is the
-            // original failed request
-            const expectBackendCoverageOnly = Cypress._.get(
-              Cypress.env('codeCoverage'),
-              'expectBackendCoverageOnly',
-              false
-            )
-            if (expectBackendCoverageOnly) {
-              throw new Error(
-                `Expected to collect backend code coverage from ${url}`
-              )
-            } else {
-              // we did not really expect to collect the backend code coverage
-              return
-            }
-          }
-          sendCoverage(coverage, 'backend')
-        })
     }
   })
 
